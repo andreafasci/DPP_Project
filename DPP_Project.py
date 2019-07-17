@@ -1,12 +1,14 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[196]:
 
 
 import pandas as pd
 import math
 import numpy as np
+import queue as pythonQueue
+import networkx as nx
 
 
 # Import data from file
@@ -400,11 +402,58 @@ salary['salary_1'] = salary['salary_0']
 salary['salary_1'].where(salary['salary_1'] != salary['salary_1'], '*', inplace=True)
 
 
+# # Incognito algorithm
+
+# In[237]:
+
+
+def frequencySet(T, Q):
+    count = {}
+    for index, row in T.iterrows():
+        full_key_string = ';'.join(map(lambda qi: str(row[qi]), Q))
+
+        if full_key_string not in count:
+            count[full_key_string] = 0
+        count[full_key_string] += 1
+    return count
+
+
+# In[238]:
+
+
+# Given a container (panda dataframe format) and an array containing names of the QI returns how much the 
+#  container is k-anonymous
+
+#  Note, qi_list might need strings (names of the columns) or numbers [0,1,2,5,6] corresponding to the QI order in the
+#  dataframe
+
+def computeK(T,Q):
+    return (min(frequencySet(T, Q).values()))
+
+
+# In[209]:
+
+
+def incognito_standard (k, T, Q, generalizations):
+    
+    queue = pythonQueue.PriorityQueue()
+    #queue.put(), queue.get(), queue.empty()
+    
+    # Must be initialized outside the for since will be both shared between iterations...
+    C_i = nx.Graph() # Graph (C_i, E_i) at iteration i
+    S_i = nx.Graph() # Graph (S_i, E_i) at iteration i
+    
+    for i in range(0, len(Q)):
+        S_i = C_i.copy()
+        #for node in C_i
+        #
+
+
 # # Tests
 # 
 # Some code to do tests and similar
 
-# In[66]:
+# In[239]:
 
 
 # Example of dataframe, supposed to be 1-anonymous
@@ -422,7 +471,7 @@ exampleDF.loc[8] = ['Johnson' ,17 ,'Male' ,'Kerala' ,'Christian' ,'Heart-related
 exampleDF.loc[9] = ['John' ,19 ,'Male' ,'Kerala' ,'Christian' ,'Viral infection']
 
 
-# In[181]:
+# In[240]:
 
 
 # the same dataframe but anonymized, it is supposed to be 2-anonymous with respect to Age, Gender, State_domicile
@@ -440,46 +489,30 @@ exampleDF_anonymized.loc[8] = ['*', 'Age < 20', 'Male', 'Kerala',  '*', 'Heart-r
 exampleDF_anonymized.loc[9] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Viral infection']
 
 
-# In[93]:
-
-
-# Given a container (panda dataframe format) and an array containing names of the QI returns how much the 
-#  container is k-anonymous
-
-#  Note, qi_list might need strings (names of the columns) or numbers [0,1,2,5,6] corresponding to the QI order in the
-#  dataframe
-
-def computeK(container, qi_list):
-    count = {}
-    for index, row in container.iterrows():
-        full_key_string = ';'.join(map(lambda qi: str(row[qi]), qi_list))
-        if full_key_string not in count:
-            count[full_key_string] = 1
-        else:
-            count[full_key_string] += 1
-    return (min(count.values()))
-
-
-# In[101]:
+# In[241]:
 
 
 computeK(exampleDF, [1,2,3]) # Not yet anonymized
 
 
-# In[185]:
+# In[242]:
 
 
 computeK(exampleDF_anonymized, [1,2,3]) # Should be 2-anon
 
 
-# In[186]:
+# In[243]:
 
 
-# Check how much our data is k-anonymous
+# Test how much our data is k-anonymous
 
 data
 qi = ['Age', 'Workclass', 'Education', 'Marital_status', 'Occupation', 'Race', 'Gender', 'Native_country', 'Salary']
 computeK(data, qi)
 
 
-# # Incognito algorithm
+# In[233]:
+
+
+frequencySet (exampleDF_anonymized, [1,2,3])
+
