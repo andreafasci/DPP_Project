@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[196]:
+# In[1]:
 
 
 import pandas as pd
@@ -74,7 +74,7 @@ data.drop(data[
 # - 10- year ranges
 # - 20- year ranges
 
-# In[124]:
+# In[5]:
 
 
 age = pd.DataFrame(columns=('age_0','age_1', 'age_2', 'age_3'))
@@ -95,7 +95,7 @@ age['age_3'] = (data['Age']/20).apply(math.floor)*20
 # - Without-pay => Not-Working => Not-Working
 # - Never-worked => Not-Working => Not-Working
 
-# In[189]:
+# In[6]:
 
 
 workclass = pd.DataFrame(columns=('workclass_0','workclass_1', 'workclass_2'))
@@ -152,7 +152,7 @@ workclass['workclass_2'].where(workclass['workclass_2'] != 'Private', 'Working',
 # - "^Some-college" => "HS-Graduate" => "High"
 # 
 
-# In[148]:
+# In[7]:
 
 
 education = pd.DataFrame(columns=('education_0', 'education_1', 'education_2'))
@@ -193,7 +193,7 @@ education['education_2'].where(education['education_2'] != 'Doctorate', 'High', 
 # - Married-civ-spouse => Married => Married
 # - Never-married => Never-Married => Not-Married
 
-# In[156]:
+# In[8]:
 
 
 marital_status = pd.DataFrame(columns=('marital_status_0', 'marital_status_1', 'marital_status_2'))
@@ -228,7 +228,7 @@ marital_status['marital_status_2'].where(marital_status['marital_status_2'] != '
 # - Tech-support => Other-Occupations => A
 # - Transport-moving => Other-Occupations => A
 
-# In[162]:
+# In[9]:
 
 
 occupation = pd.DataFrame(columns=('occupation_0','occupation_1', 'occupation_2'))
@@ -263,7 +263,7 @@ occupation['occupation_2'].where(occupation['occupation_2'] != 'Blue-Collar', 'B
 # ### Domain generalization for Race
 # Based on suppression
 
-# In[166]:
+# In[10]:
 
 
 race = pd.DataFrame(columns=('race_0','race_1'))
@@ -277,7 +277,7 @@ race['race_1'].where(race['race_1'] != race['race_1'], '*', inplace=True)
 # 
 # Based on suppression
 
-# In[169]:
+# In[11]:
 
 
 gender = pd.DataFrame(columns=('gender_0', 'gender_1'))
@@ -331,7 +331,7 @@ gender['gender_1'].where(gender['gender_1'] != gender['gender_1'], '*', inplace=
 # - Vietnam => SE-Asia => Asia
 # - Yugoslavia => Euro_2 => Europe
 
-# In[176]:
+# In[12]:
 
 
 native_country = pd.DataFrame(columns=('native_country_0', 'native_country_1', 'native_country_2'))
@@ -392,7 +392,7 @@ native_country['native_country_2'].where(native_country['native_country_2'] != '
 # 
 # Based on suppression
 
-# In[180]:
+# In[13]:
 
 
 salary = pd.DataFrame(columns=('salary_0','salary_1'))
@@ -404,56 +404,78 @@ salary['salary_1'].where(salary['salary_1'] != salary['salary_1'], '*', inplace=
 
 # # Incognito algorithm
 
-# In[237]:
+# In[14]:
 
 
-def frequencySet(T, Q):
-    count = {}
-    for index, row in T.iterrows():
-        full_key_string = ';'.join(map(lambda qi: str(row[qi]), Q))
+def frequencySet_standard(T, Q):
+    fsSet = T.groupby(Q).count().reset_index()
+    fsSet = fsSet.iloc[:, :(len(Q)+1)]
+    fsSet.rename({fsSet.columns[(len(Q))] : 'Count'}, axis='columns', inplace=True)
 
-        if full_key_string not in count:
-            count[full_key_string] = 0
-        count[full_key_string] += 1
-    return count
+    return fsSet
 
 
-# In[238]:
+# In[15]:
 
 
-# Given a container (panda dataframe format) and an array containing names of the QI returns how much the 
-#  container is k-anonymous
-
-#  Note, qi_list might need strings (names of the columns) or numbers [0,1,2,5,6] corresponding to the QI order in the
-#  dataframe
-
-def computeK(T,Q):
-    return (min(frequencySet(T, Q).values()))
+def computeK(frequencySet):
+    return min(frequencySet['Count'])
 
 
-# In[209]:
+# In[16]:
 
 
 def incognito_standard (k, T, Q, generalizations):
     
     queue = pythonQueue.PriorityQueue()
-    #queue.put(), queue.get(), queue.empty()
     
     # Must be initialized outside the for since will be both shared between iterations...
-    C_i = nx.Graph() # Graph (C_i, E_i) at iteration i
-    S_i = nx.Graph() # Graph (S_i, E_i) at iteration i
-    
+    C_i = nx.DiGraph() # Graph (C_i, E_i) at iteration i
+    S_i = nx.DiGraph() # Graph (S_i, E_i) at iteration i
+
     for i in range(0, len(Q)):
         S_i = C_i.copy()
-        #for node in C_i
-        #
+        marked = set()
+        
+        # Insert all roots node into queue, keeping queue sorted by height
+        for node in C_i.nodes():
+            if C_i.in_degree(node) == 0:
+                queue.put([height(node)???, node])
+        
+        while not queue.empty():
+            node = queue.get()
+            if not node in marked:
+                # if node is a root
+                attributesOfNode = ???
+                
+                if C_i.in_degree(node) == 0:
+                    frequencySet = frequencySet_standard(T, attributesOfNode)
+                else:
+                    frequencySetParent = ???
+                    frequencySet = frequencySet_rollup(T, attributesOfNode, frequencySetParent)
+                
+                actual_k = computeK(frequencySet)
+                # If T is k-anonymous with respect to attributes of node
+                if (actual_k >= k):
+                    generalizationsPath = ???
+                    # mark all direct generalizations of node
+                    for generalization in generalizationsPath:
+                        marked.add(generalization)
+                else:
+                    S_i.remove_node(node)
+                    for generalization in generalizationsPath:
+                        queue.put([height(generalization)???, generalization])
+        
+        C_i = GraphGeneration(S_i)???
+        
+    return S_i
 
 
 # # Tests
 # 
 # Some code to do tests and similar
 
-# In[239]:
+# In[17]:
 
 
 # Example of dataframe, supposed to be 1-anonymous
@@ -471,7 +493,7 @@ exampleDF.loc[8] = ['Johnson' ,17 ,'Male' ,'Kerala' ,'Christian' ,'Heart-related
 exampleDF.loc[9] = ['John' ,19 ,'Male' ,'Kerala' ,'Christian' ,'Viral infection']
 
 
-# In[240]:
+# In[18]:
 
 
 # the same dataframe but anonymized, it is supposed to be 2-anonymous with respect to Age, Gender, State_domicile
@@ -489,30 +511,34 @@ exampleDF_anonymized.loc[8] = ['*', 'Age < 20', 'Male', 'Kerala',  '*', 'Heart-r
 exampleDF_anonymized.loc[9] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Viral infection']
 
 
-# In[241]:
+# In[19]:
 
 
-computeK(exampleDF, [1,2,3]) # Not yet anonymized
+frequencySet_standard(exampleDF, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[242]:
+# In[20]:
 
 
-computeK(exampleDF_anonymized, [1,2,3]) # Should be 2-anon
+frequencySet_standard(exampleDF_anonymized, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[243]:
+# In[22]:
 
 
-# Test how much our data is k-anonymous
-
-data
-qi = ['Age', 'Workclass', 'Education', 'Marital_status', 'Occupation', 'Race', 'Gender', 'Native_country', 'Salary']
-computeK(data, qi)
+fSet = frequencySet_standard(data[:30], ['Age', 'Workclass', 'Education', 'Marital_status'])
+fSet
 
 
-# In[233]:
+# In[23]:
 
 
-frequencySet (exampleDF_anonymized, [1,2,3])
+tmpAge = pd.DataFrame({'age_0' : np.sort(pd.unique(data['Age']))})
+tmpAge['age_1'] = (tmpAge['age_0']/5).apply(math.floor)*5
+tmpAge['age_2'] = (tmpAge['age_0']/10).apply(math.floor)*10
+tmpAge['age_3'] = (tmpAge['age_0']/20).apply(math.floor)*20
+
+fSet = frequencySet_standard(data[:50], ['Age', 'Workclass', 'Education', 'Marital_status'])
+
+fSet.join(tmpAge.set_index('age_0'), on='Age')
 
