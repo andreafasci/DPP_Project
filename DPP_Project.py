@@ -1,7 +1,7 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[30]:
 
 
 import pandas as pd
@@ -9,11 +9,12 @@ import math
 import numpy as np
 import queue as pythonQueue
 import networkx as nx
+import matplotlib.pyplot as plt
 
 
 # Import data from file
 
-# In[2]:
+# In[3]:
 
 
 data = pd.read_csv('adult.data', header=0, sep=', ', engine='python' )
@@ -27,7 +28,7 @@ data = pd.read_csv('adult.data', header=0, sep=', ', engine='python' )
 # - Capital loss
 # - Hours-per-week
 
-# In[3]:
+# In[4]:
 
 
 data.drop(columns=['Fnlwgt', 'Education_num', 'Relationship', 'Capital_gain', 'Capital_loss', 'Hours_per_week'], inplace=True);
@@ -35,7 +36,7 @@ data.drop(columns=['Fnlwgt', 'Education_num', 'Relationship', 'Capital_gain', 'C
 
 # Drop rows in which we have unknown values ('?')
 
-# In[4]:
+# In[5]:
 
 
 data.drop(data[
@@ -74,7 +75,7 @@ data.drop(data[
 # - 10- year ranges
 # - 20- year ranges
 
-# In[5]:
+# In[6]:
 
 
 age = pd.DataFrame(columns=('age_0','age_1', 'age_2', 'age_3'))
@@ -95,7 +96,7 @@ age['age_3'] = (data['Age']/20).apply(math.floor)*20
 # - Without-pay => Not-Working => Not-Working
 # - Never-worked => Not-Working => Not-Working
 
-# In[6]:
+# In[7]:
 
 
 workclass = pd.DataFrame(columns=('workclass_0','workclass_1', 'workclass_2'))
@@ -152,7 +153,7 @@ workclass['workclass_2'].where(workclass['workclass_2'] != 'Private', 'Working',
 # - "^Some-college" => "HS-Graduate" => "High"
 # 
 
-# In[7]:
+# In[8]:
 
 
 education = pd.DataFrame(columns=('education_0', 'education_1', 'education_2'))
@@ -193,7 +194,7 @@ education['education_2'].where(education['education_2'] != 'Doctorate', 'High', 
 # - Married-civ-spouse => Married => Married
 # - Never-married => Never-Married => Not-Married
 
-# In[8]:
+# In[9]:
 
 
 marital_status = pd.DataFrame(columns=('marital_status_0', 'marital_status_1', 'marital_status_2'))
@@ -228,7 +229,7 @@ marital_status['marital_status_2'].where(marital_status['marital_status_2'] != '
 # - Tech-support => Other-Occupations => A
 # - Transport-moving => Other-Occupations => A
 
-# In[9]:
+# In[10]:
 
 
 occupation = pd.DataFrame(columns=('occupation_0','occupation_1', 'occupation_2'))
@@ -263,7 +264,7 @@ occupation['occupation_2'].where(occupation['occupation_2'] != 'Blue-Collar', 'B
 # ### Domain generalization for Race
 # Based on suppression
 
-# In[10]:
+# In[11]:
 
 
 race = pd.DataFrame(columns=('race_0','race_1'))
@@ -277,7 +278,7 @@ race['race_1'].where(race['race_1'] != race['race_1'], '*', inplace=True)
 # 
 # Based on suppression
 
-# In[11]:
+# In[12]:
 
 
 gender = pd.DataFrame(columns=('gender_0', 'gender_1'))
@@ -331,7 +332,7 @@ gender['gender_1'].where(gender['gender_1'] != gender['gender_1'], '*', inplace=
 # - Vietnam => SE-Asia => Asia
 # - Yugoslavia => Euro_2 => Europe
 
-# In[12]:
+# In[13]:
 
 
 native_country = pd.DataFrame(columns=('native_country_0', 'native_country_1', 'native_country_2'))
@@ -392,7 +393,7 @@ native_country['native_country_2'].where(native_country['native_country_2'] != '
 # 
 # Based on suppression
 
-# In[13]:
+# In[14]:
 
 
 salary = pd.DataFrame(columns=('salary_0','salary_1'))
@@ -402,9 +403,72 @@ salary['salary_1'] = salary['salary_0']
 salary['salary_1'].where(salary['salary_1'] != salary['salary_1'], '*', inplace=True)
 
 
+# ### Domains to array
+
+# In[28]:
+
+
+dimensions = {}
+dimensions['Age']=age
+dimensions['Workclass'] = workclass
+dimensions['Education']=education
+dimensions['Marital_status']=marital_status
+dimensions['Occupation']=occupation
+dimensions['Race']=race
+dimensions['Gender']=gender
+dimensions['Native_country']=native_country
+dimensions['Salary']=salary
+
+
 # # Incognito algorithm
 
-# In[14]:
+# In[35]:
+
+
+dimensions['Age'].columns
+
+
+# In[38]:
+
+
+def generate_graph_0(Q, dimensions):
+    G = nx.Graph()
+    for dimension_name in Q:
+        prev = None
+        height = 0
+        for dimension_level_name in dimensions[dimension_name].columns:
+            l = [(dimension_name, height)]
+            #Convert the list to tuple to make it hashable
+            #Not making directly a tuple to be consistent 
+            current_node = tuple(l)
+            G.add_node(current_node)
+            if prev is None:
+                prev = current_node
+                continue
+            #from ((age, 0)) to ((age, 1)), then ((age,1)) to ((age, 2))
+            G.add_edge(prev, current_node)
+            height = height + 1
+            prev = current_node
+    
+    return G
+            
+            
+    
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[17]:
 
 
 def frequencySet_standard(T, Q):
@@ -415,14 +479,14 @@ def frequencySet_standard(T, Q):
     return fsSet
 
 
-# In[15]:
+# In[18]:
 
 
 def computeK(frequencySet):
     return min(frequencySet['Count'])
 
 
-# In[16]:
+# In[19]:
 
 
 def incognito_standard (k, T, Q, generalizations):
@@ -475,7 +539,7 @@ def incognito_standard (k, T, Q, generalizations):
 # 
 # Some code to do tests and similar
 
-# In[17]:
+# In[ ]:
 
 
 # Example of dataframe, supposed to be 1-anonymous
@@ -493,7 +557,7 @@ exampleDF.loc[8] = ['Johnson' ,17 ,'Male' ,'Kerala' ,'Christian' ,'Heart-related
 exampleDF.loc[9] = ['John' ,19 ,'Male' ,'Kerala' ,'Christian' ,'Viral infection']
 
 
-# In[18]:
+# In[ ]:
 
 
 # the same dataframe but anonymized, it is supposed to be 2-anonymous with respect to Age, Gender, State_domicile
@@ -511,26 +575,26 @@ exampleDF_anonymized.loc[8] = ['*', 'Age < 20', 'Male', 'Kerala',  '*', 'Heart-r
 exampleDF_anonymized.loc[9] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Viral infection']
 
 
-# In[19]:
+# In[ ]:
 
 
 frequencySet_standard(exampleDF, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[20]:
+# In[ ]:
 
 
 frequencySet_standard(exampleDF_anonymized, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[22]:
+# In[ ]:
 
 
 fSet = frequencySet_standard(data[:30], ['Age', 'Workclass', 'Education', 'Marital_status'])
 fSet
 
 
-# In[23]:
+# In[ ]:
 
 
 tmpAge = pd.DataFrame({'age_0' : np.sort(pd.unique(data['Age']))})
@@ -541,4 +605,19 @@ tmpAge['age_3'] = (tmpAge['age_0']/20).apply(math.floor)*20
 fSet = frequencySet_standard(data[:50], ['Age', 'Workclass', 'Education', 'Marital_status'])
 
 fSet.join(tmpAge.set_index('age_0'), on='Age')
+
+
+# In[44]:
+
+
+graph = generate_graph_0( ['Age', 'Workclass', 'Education', 'Marital_status'], dimensions)
+labels = {node:str(node) for node in graph.nodes()}
+nx.draw(graph, with_labels=True, labels=labels)
+plt.show()
+
+
+# In[ ]:
+
+
+
 
