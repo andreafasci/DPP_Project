@@ -428,11 +428,11 @@ dimensions['Salary']=salary
 dimensions['Age'].columns
 
 
-# In[38]:
+# In[45]:
 
 
 def generate_graph_0(Q, dimensions):
-    G = nx.Graph()
+    G = nx.DiGraph()
     for dimension_name in Q:
         prev = None
         height = 0
@@ -607,7 +607,7 @@ fSet = frequencySet_standard(data[:50], ['Age', 'Workclass', 'Education', 'Marit
 fSet.join(tmpAge.set_index('age_0'), on='Age')
 
 
-# In[44]:
+# In[46]:
 
 
 graph = generate_graph_0( ['Age', 'Workclass', 'Education', 'Marital_status'], dimensions)
