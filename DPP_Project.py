@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[30]:
+# In[1]:
 
 
 import pandas as pd
@@ -10,6 +10,15 @@ import numpy as np
 import queue as pythonQueue
 import networkx as nx
 import matplotlib.pyplot as plt
+
+
+# Definitions
+
+# In[2]:
+
+
+ATTRIBUTE_NAME = 0
+ATTRIBUTE_HEIGHT = 1
 
 
 # Import data from file
@@ -405,30 +414,34 @@ salary['salary_1'].where(salary['salary_1'] != salary['salary_1'], '*', inplace=
 
 # ### Domains to array
 
-# In[28]:
+# In[49]:
 
 
 dimensions = {}
-dimensions['Age']=age
-dimensions['Workclass'] = workclass
-dimensions['Education']=education
-dimensions['Marital_status']=marital_status
-dimensions['Occupation']=occupation
-dimensions['Race']=race
-dimensions['Gender']=gender
-dimensions['Native_country']=native_country
-dimensions['Salary']=salary
+dimensions['age']=age
+dimensions['workclass'] = workclass
+dimensions['education']=education
+dimensions['marital_status']=marital_status
+dimensions['occupation']=occupation
+dimensions['race']=race
+dimensions['gender']=gender
+dimensions['native_country']=native_country
+dimensions['salary']=salary
+data_concat = data
+for dimension in dimensions:
+    data_concat = pd.concat([data_concat, dimensions[dimension]], axis=1)
+    
+data_concat
 
 
-# # Incognito algorithm
+# ### Graph utilities
 
-# In[35]:
+# ### Graph definition
+# Each node of the graph is a generalization. A node is a tuple of tuples (tuple_1, tuple_2, ..., tuple_n).
+# Each tuple_i is composed as (Attribute_name, Attribute_generalization).
+# Ex. (('Age', 0), ('Sex', 0)) is a generalization with respect to columns age_0, sex_0
 
-
-dimensions['Age'].columns
-
-
-# In[45]:
+# In[110]:
 
 
 def generate_graph_0(Q, dimensions):
@@ -436,39 +449,35 @@ def generate_graph_0(Q, dimensions):
     for dimension_name in Q:
         prev = None
         height = 0
-        for dimension_level_name in dimensions[dimension_name].columns:
+        for _ in dimensions[dimension_name].columns:
             l = [(dimension_name, height)]
             #Convert the list to tuple to make it hashable
-            #Not making directly a tuple to be consistent 
             current_node = tuple(l)
-            G.add_node(current_node)
-            if prev is None:
-                prev = current_node
-                continue
-            #from ((age, 0)) to ((age, 1)), then ((age,1)) to ((age, 2))
-            G.add_edge(prev, current_node)
+            
+            if prev is not None:
+                #from ((age, 0)) to ((age, 1)), then ((age,1)) to ((age, 2))
+                G.add_edge(prev, current_node)
+                
             height = height + 1
             prev = current_node
     
     return G
+
+
+# In[99]:
+
+
+def printGraph(G):
+    labels = {node:str(node) for node in G.nodes()}
+    print(labels)
+    nx.draw(G, with_labels=True, labels=labels)
+    plt.show()
             
-            
-    
 
 
-# In[ ]:
+# # Incognito algorithm
 
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[17]:
+# In[101]:
 
 
 def frequencySet_standard(T, Q):
@@ -479,14 +488,54 @@ def frequencySet_standard(T, Q):
     return fsSet
 
 
-# In[18]:
+# In[121]:
+
+
+def frequencySet_fromParent(T, Q):
+    fsSet = T.groupby(Q)['Count'].sum().reset_index()
+    fsSet = fsSet.iloc[:, :(len(Q)+1)]
+    #Rename last column to "Count"
+    fsSet.rename({fsSet.columns[(len(Q))] : 'Count'}, axis='columns', inplace=True)
+
+    return fsSet
+
+
+# In[77]:
 
 
 def computeK(frequencySet):
     return min(frequencySet['Count'])
 
 
-# In[19]:
+# #### Generate attributes list.  For each attribute, include all its generalizations. 
+# Ex. if current node is age_1, we shoud group by age_1, age_2 and age_3 because the latter ones will be needed in next iterations in parentFrequencySet. Of course group by(age_1) has the same number of rows of group by (age_1, age_2, age_3)
+
+# In[128]:
+
+
+def getAllAttributesGeneralizations(node, generalizations):
+    attributesOfNode = list()
+    for attribute in list(node):
+            # 0 is the name, 1 is the generalization level
+            attributeGeneralizaiton = generalizations[attribute[ATTRIBUTE_NAME]]
+            
+            for i in range(attribute[ATTRIBUTE_HEIGHT], len(attributeGeneralizaiton.columns)):
+                attributesOfNode.append("{}_{}".format(attribute[ATTRIBUTE_NAME], i))
+                
+    return attributesOfNode
+
+
+# In[129]:
+
+
+def getNodeHeight(node):
+        height = 0
+        for nodeAttr in node:
+            height = height + nodeAttr[ATTRIBUTE_HEIGHT]
+        return height
+
+
+# In[130]:
 
 
 def incognito_standard (k, T, Q, generalizations):
@@ -494,44 +543,50 @@ def incognito_standard (k, T, Q, generalizations):
     queue = pythonQueue.PriorityQueue()
     
     # Must be initialized outside the for since will be both shared between iterations...
-    C_i = nx.DiGraph() # Graph (C_i, E_i) at iteration i
-    S_i = nx.DiGraph() # Graph (S_i, E_i) at iteration i
-
-    for i in range(0, len(Q)):
+    C_i = generate_graph_0(Q, generalizations) # Graph (C_i, E_i) at iteration i
+    S_i = None
+    sink = list((node for node, out_degree in C_i.out_degree() if out_degree == 0))[0]
+    for i in range(0, len(Q)-3):
         S_i = C_i.copy()
         marked = set()
         
         # Insert all roots node into queue, keeping queue sorted by height
         for node in C_i.nodes():
             if C_i.in_degree(node) == 0:
-                queue.put([height(node)???, node])
+                height =getNodeHeight(node)
+                # First parameter is height, second is data
+                queue.put((height, node))
         
         while not queue.empty():
-            node = queue.get()
-            if not node in marked:
-                # if node is a root
-                attributesOfNode = ???
-                
+            height, node = queue.get()
+            if node not in marked:
+                # Ex. attributesOfNode = [age_0, age_1, age_2, sex_1, sex_2]
+                attributesOfNode = getAllAttributesGeneralizations(node, generalizations) 
+                # if node was initally a root
                 if C_i.in_degree(node) == 0:
                     frequencySet = frequencySet_standard(T, attributesOfNode)
                 else:
-                    frequencySetParent = ???
-                    frequencySet = frequencySet_rollup(T, attributesOfNode, frequencySetParent)
+                    frequencySetParent = S_i.node[node]['parentFrequencySet']
+                    frequencySet = frequencySet_fromParent(frequencySetParent, attributesOfNode)
                 
                 actual_k = computeK(frequencySet)
                 # If T is k-anonymous with respect to attributes of node
                 if (actual_k >= k):
-                    generalizationsPath = ???
                     # mark all direct generalizations of node
-                    for generalization in generalizationsPath:
-                        marked.add(generalization)
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            marked.add(pathNode)
                 else:
+                    # Set childs frequency set to this one
+                    for child in S_i.out_edges(node):
+                        S_i.node[child[1]]['parentFrequencySet'] = frequencySet
+                        height =getNodeHeight(child[1])
+                        queue.put((height, child[1]))
+                        
+                    #print("Removed node: {}".format(node))
                     S_i.remove_node(node)
-                    for generalization in generalizationsPath:
-                        queue.put([height(generalization)???, generalization])
-        
-        C_i = GraphGeneration(S_i)???
-        
+                    
+        #COMPUTE C_i+1
     return S_i
 
 
@@ -539,7 +594,7 @@ def incognito_standard (k, T, Q, generalizations):
 # 
 # Some code to do tests and similar
 
-# In[ ]:
+# In[22]:
 
 
 # Example of dataframe, supposed to be 1-anonymous
@@ -557,7 +612,7 @@ exampleDF.loc[8] = ['Johnson' ,17 ,'Male' ,'Kerala' ,'Christian' ,'Heart-related
 exampleDF.loc[9] = ['John' ,19 ,'Male' ,'Kerala' ,'Christian' ,'Viral infection']
 
 
-# In[ ]:
+# In[23]:
 
 
 # the same dataframe but anonymized, it is supposed to be 2-anonymous with respect to Age, Gender, State_domicile
@@ -575,26 +630,26 @@ exampleDF_anonymized.loc[8] = ['*', 'Age < 20', 'Male', 'Kerala',  '*', 'Heart-r
 exampleDF_anonymized.loc[9] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Viral infection']
 
 
-# In[ ]:
+# In[24]:
 
 
 frequencySet_standard(exampleDF, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[ ]:
+# In[25]:
 
 
 frequencySet_standard(exampleDF_anonymized, ['Age', 'Gender', 'State_domicile'])
 
 
-# In[ ]:
+# In[26]:
 
 
 fSet = frequencySet_standard(data[:30], ['Age', 'Workclass', 'Education', 'Marital_status'])
 fSet
 
 
-# In[ ]:
+# In[27]:
 
 
 tmpAge = pd.DataFrame({'age_0' : np.sort(pd.unique(data['Age']))})
@@ -607,13 +662,34 @@ fSet = frequencySet_standard(data[:50], ['Age', 'Workclass', 'Education', 'Marit
 fSet.join(tmpAge.set_index('age_0'), on='Age')
 
 
-# In[46]:
+# In[30]:
 
 
 graph = generate_graph_0( ['Age', 'Workclass', 'Education', 'Marital_status'], dimensions)
-labels = {node:str(node) for node in graph.nodes()}
-nx.draw(graph, with_labels=True, labels=labels)
-plt.show()
+printGraph(graph)
+
+
+# In[132]:
+
+
+G = incognito_standard(50, data_concat, ['age', 'workclass', 'education', 'marital_status'], dimensions  )
+
+printGraph(G)
+
+
+# In[ ]:
+
+
+#frequencySet_standard(data, ['Age_1'])
+attributesOfNode = getAllAttributesGeneralizations([('Age', 0)], dimensions)   
+print(attributesOfNode)
+frequencySet = frequencySet_standard(T, attributesOfNode)
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
