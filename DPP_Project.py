@@ -79,12 +79,6 @@ data.drop(data[
 # - Gender => Suppression (1)
 # - Native country => Taxonomy tree (2)
 # - Salary => Suppression (1)
-# 
-# Code's rule:
-# 
-# the less general version of the data of the Q.I. called 'pippo' is in data['pippo'] . 
-# 
-# For each generalization level n, we will have a variable called pippo_n containing the generalization of the values in data['pippo'], where pippo_1 is LESS general than pippo_2 
 
 # ### Domain generalization for Age
 # - 5- year ranges
@@ -589,7 +583,6 @@ def computeK(frequencySet):
 def getAllAttributesGeneralizations(node, generalizations):
     attributesOfNode = list()
     for attribute in list(node):
-            # 0 is the name, 1 is the generalization level
             attributeGeneralizaiton = generalizations[attribute[ATTRIBUTE_NAME]]
             
             for i in range(attribute[ATTRIBUTE_HEIGHT], len(attributeGeneralizaiton.columns)):
@@ -652,22 +645,7 @@ def generateGraph(C_i):
         df_parent = df_parent.apply(tuple, axis=1)
                 
         df2 = df.copy()
-        
-        """df['key'] = df[0]
-        df2 = df.copy()
-        
-        df = df.rename(columns={0: '0_x'})
-        df2 = df2.rename(columns={0: '0_y'})
-        
-        df = df.rename(columns={num_columns-1: str(num_columns-1)+'_x'})
-        df2 = df2.rename(columns={num_columns-1: str(num_columns-1)+'_y'})
-        for i in range(1, num_columns-1):
-            df = df.rename(columns={i: str(i)+'_x'})
-            df2 = df2.rename(columns={i: str(i)+'_y'})
-            df['key'] = list(zip(df['key'], df[str(i)+'_x']))
-            df2['key'] = list(zip(df2['key'], df2[str(i)+'_y']))
-            #print(df)
-            """
+
         df['key'] = df_key
         df2['key'] = df_key
         df['parent_x'] = df_parent #list(zip(df['key'], df[last_x]))
@@ -738,18 +716,6 @@ def generateGraph(C_i):
                     n2 = cond2aux['parent_x'][j] + tuple([cond2aux[last_y][j]])
                     #G.add_edge(tuple(n1), tuple(n2))
                     new_edges = new_edges.append({'start': n1, 'end': n2}, ignore_index=True)
-                """
-                print(condaux)
-                #if len(cond1_1) > 0:
-                for j in range(0, len(cond1_1)):
-                    cond2 = nodes2[nodes2['parent_x'] == cond1_1['end']][j]
-                    cond2 = cond2[cond2['parent_y'] == node['parent_y']].reset_index(drop=True)
-                    if len(cond2) > 0 and node['parent_y'] == cond2['parent_y'][0] and node['parent_x'] != cond2['parent_x'][0]:
-                        #cond1 = cond1.append(cond2[0])
-                        n1 = node['parent_x'] + tuple([node[last_y]])
-                        n2 = cond2['parent_x'][0] + tuple([cond2[last_y][0]])
-                        G.add_edge(tuple(n1), tuple(n2))
-                """
                 
                 cond1_2aux = cond1_2.copy()
                 cond1_2aux = cond1_2aux.rename(columns={'end': 'parent_y'})
@@ -767,20 +733,7 @@ def generateGraph(C_i):
                     n1 = node['parent_x'] + tuple([node[last_y]])
                     n2 = cond1['parent_x'][j] + tuple([cond1[last_y][j]])
                     new_edges = new_edges.append({'start': n1, 'end': n2}, ignore_index=True)
-                """
-                #if len(cond1_2) > 0:
-                for j in range(0, len(cond1_2)):
-                    #print(cond1_2)
-                    cond3 = nodes2[nodes2['parent_y'] == cond1_2['end'][j]]
-                    #print(cond3)
-                    cond3 = cond3[cond3['parent_x'] == node['parent_x']].reset_index(drop=True)
-                    #print(cond3)
-                    if len(cond3) > 0 and node['parent_x'] == cond3['parent_x'][0] and node['parent_y'] != cond3['parent_y'][0]:
-                        print(len(cond3))
-                        n1 = node['parent_x'] + tuple([node[last_y]])
-                        n2 = cond3['parent_x'][0] + tuple([cond3[last_y][0]])
-                        G.add_edge(tuple(n1), tuple(n2))
-                """
+               
     if len(new_edges) >0:
         remove_edges = new_edges.copy()
         remove_edges = remove_edges.rename(columns={'end': 'end2'})
@@ -905,21 +858,21 @@ def incognito_super_root (k, T, Q, generalizations):
             for i in range(1, len(rootSet)):
                 sameFamilyAsBefore = True
 
-                # Se i nodi hanno tuple di lunghezza diversa non provengono dalla stessa famiglia (o comunque non devo gestirlo)
+                # If nodes contain tuples of different length then they don't come from the same family 
                 if not (len(rootSet[i]) == len(rootSet[i-1])):
                     sameFamilyAsBefore = False    
                 else:
-                    # Se hanno tuple di lunghezza uguale, controlla se hanno gli stessi attributi
+                    # If nodes have tuples of the same length, then check if they have the same attributes
                     for j in range(0, len(rootSet[i])):
                         if not (rootSet[i-1][j][0] == rootSet[i][j][0]):
                             sameFamilyAsBefore = False
 
-                # se l'attuale nodo ha gli stessi attributi di quello precedente, aggiungi 1 al numero di persone in famiglia
+                # If current node has the same attributes as the one before, then add 1 to the number of members in the family
                 if sameFamilyAsBefore:
                     familyFound = True
                     familyCount +=1
                     
-                    # Se l'attuale nodo e' anche l'ultimo, allora e' l'ultimo della famiglia, calcolane la freqSet
+                    # If current node is also the last one to be analyzed, then it is the last one in the family => compute freqSet
                     if (i == (len(rootSet)-1)):
                         familyAttributes = list()
                         for l in range(len(rootSet[i-1])):
@@ -930,9 +883,9 @@ def incognito_super_root (k, T, Q, generalizations):
                         for l in range((i - familyCount), (i+1)):
                             frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
                 
-                # Se l'attuale nodo  non ha gli stessi attributi di quello precedente:
+                # If current node doesnt have the same attributes of the one before:
                 else:
-                    # se avevamo trovato una famiglia, allora calcolane la freqSet (fino al nodo precedente)
+                    # If we had found a family, then compute freqSet (until the previous node in the list)
                     if familyFound:
                         familyCount += 1
                         familyAttributes = list()
@@ -1043,21 +996,21 @@ def cube_incognito (k, T, Q, generalizations):
             for i in range(1, len(rootSet)):
                 sameFamilyAsBefore = True
 
-                # Se i nodi hanno tuple di lunghezza diversa non provengono dalla stessa famiglia (o comunque non devo gestirlo)
+                # If nodes contain tuples of different length then they don't come from the same family                 
                 if not (len(rootSet[i]) == len(rootSet[i-1])):
                     sameFamilyAsBefore = False    
                 else:
-                    # Se hanno tuple di lunghezza uguale, controlla se hanno gli stessi attributi
+                    # If nodes have tuples of the same length, then check if they have the same attributes
                     for j in range(0, len(rootSet[i])):
                         if not (rootSet[i-1][j][0] == rootSet[i][j][0]):
                             sameFamilyAsBefore = False
 
-                # se l'attuale nodo ha gli stessi attributi di quello precedente, aggiungi 1 al numero di persone in famiglia
+                # If current node has the same attributes as the one before, then add 1 to the number of members in the family
                 if sameFamilyAsBefore:
                     familyFound = True
                     familyCount +=1
                     
-                    # Se l'attuale nodo e' anche l'ultimo, allora e' l'ultimo della famiglia, calcolane la freqSet
+                    # If current node is also the last one to be analyzed, then it is the last one in the family => compute freqSet
                     if (i == (len(rootSet)-1)):
                         familyAttributes = list()
                         for l in range(len(rootSet[i-1])):
@@ -1069,9 +1022,9 @@ def cube_incognito (k, T, Q, generalizations):
                         for l in range((i - familyCount), (i+1)):
                             frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
                 
-                # Se l'attuale nodo  non ha gli stessi attributi di quello precedente:
+                # If current node doesnt have the same attributes of the one before:
                 else:
-                    # se avevamo trovato una famiglia, allora calcolane la freqSet (fino al nodo precedente)
+                    # If we had found a family, then compute freqSet (until the previous node in the list)
                     if familyFound:
                         familyCount += 1
                         familyAttributes = list()
@@ -1261,10 +1214,4 @@ plt.legend()
 print(our_data_standard_K_10)
 print(our_data_superRoot_K_10)
 print(our_data_cube_K_10)
-
-
-# In[79]:
-
-
-print(len(data))
 
