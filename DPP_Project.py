@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+
 # coding: utf-8
 
-# In[1]:
+# In[56]:
 
 
 import pandas as pd
@@ -9,7 +9,11 @@ import math
 import numpy as np
 import queue as pythonQueue
 import networkx as nx
+import matplotlib 
 import matplotlib.pyplot as plt
+import time
+import itertools
+from operator import itemgetter
 
 
 # Definitions
@@ -28,6 +32,9 @@ ATTRIBUTE_HEIGHT = 1
 
 data = pd.read_csv('adult.data', header=0, sep=', ', engine='python' )
 
+# Move to lowercase
+data.columns = [col.lower() for col in data.columns]
+
 
 # Drop these columns:
 # - Fnlwgt
@@ -40,7 +47,7 @@ data = pd.read_csv('adult.data', header=0, sep=', ', engine='python' )
 # In[4]:
 
 
-data.drop(columns=['Fnlwgt', 'Education_num', 'Relationship', 'Capital_gain', 'Capital_loss', 'Hours_per_week'], inplace=True);
+data.drop(columns=['fnlwgt', 'education_num', 'relationship', 'capital_gain', 'capital_loss', 'hours_per_week'], inplace=True);
 
 
 # Drop rows in which we have unknown values ('?')
@@ -49,14 +56,14 @@ data.drop(columns=['Fnlwgt', 'Education_num', 'Relationship', 'Capital_gain', 'C
 
 
 data.drop(data[
-                (data.Workclass == '?') |
-                (data.Education == '?') |
-                (data.Marital_status == '?') |
-                (data.Occupation == '?') |
-                (data.Race == '?') |
-                (data.Gender == '?') |
-                (data.Native_country == '?') |
-                (data.Salary == '?')].index, inplace=True);
+                (data.workclass == '?') |
+                (data.education == '?') |
+                (data.marital_status == '?') |
+                (data.occupation == '?') |
+                (data.race == '?') |
+                (data.gender == '?') |
+                (data.native_country == '?') |
+                (data.salary == '?')].index, inplace=True);
 
 
 # # Domain generalization
@@ -87,11 +94,10 @@ data.drop(data[
 # In[6]:
 
 
-age = pd.DataFrame(columns=('age_0','age_1', 'age_2', 'age_3'))
-age['age_0'] = data['Age']
-age['age_1'] = (data['Age']/5).apply(math.floor)*5
-age['age_2'] = (data['Age']/10).apply(math.floor)*10
-age['age_3'] = (data['Age']/20).apply(math.floor)*20
+age = pd.DataFrame({'age_0' : np.sort(pd.unique(data['age']))})
+age['age_1'] = (age['age_0']/5).apply(math.floor)*5
+age['age_2'] = (age['age_0']/10).apply(math.floor)*10
+age['age_3'] = (age['age_0']/20).apply(math.floor)*20
 
 
 # ### Domain generalization for Workclass
@@ -108,9 +114,7 @@ age['age_3'] = (data['Age']/20).apply(math.floor)*20
 # In[7]:
 
 
-workclass = pd.DataFrame(columns=('workclass_0','workclass_1', 'workclass_2'))
-
-workclass['workclass_0'] = data['Workclass']
+workclass = pd.DataFrame({'workclass_0' : np.sort(pd.unique(data['workclass']))})
 
 workclass['workclass_1'] = workclass['workclass_0']
 workclass['workclass_1'].where(workclass['workclass_1'] != 'Self-emp-inc', 'Self-Emp', inplace=True)
@@ -165,9 +169,7 @@ workclass['workclass_2'].where(workclass['workclass_2'] != 'Private', 'Working',
 # In[8]:
 
 
-education = pd.DataFrame(columns=('education_0', 'education_1', 'education_2'))
-
-education['education_0'] = data['Education']
+education = pd.DataFrame({'education_0' : np.sort(pd.unique(data['education']))})
 
 education['education_1'] = education['education_0']
 education['education_1'].where(education['education_1'] != '10th', 'Dropout', inplace=True)
@@ -206,9 +208,7 @@ education['education_2'].where(education['education_2'] != 'Doctorate', 'High', 
 # In[9]:
 
 
-marital_status = pd.DataFrame(columns=('marital_status_0', 'marital_status_1', 'marital_status_2'))
-
-marital_status['marital_status_0'] = data['Marital_status']
+marital_status = pd.DataFrame({'marital_status_0' : np.sort(pd.unique(data['marital_status']))})
 
 marital_status['marital_status_1'] = marital_status['marital_status_0']
 marital_status['marital_status_1'].where(marital_status['marital_status_1'] != 'Divorced', 'Not-Married', inplace=True)
@@ -241,9 +241,7 @@ marital_status['marital_status_2'].where(marital_status['marital_status_2'] != '
 # In[10]:
 
 
-occupation = pd.DataFrame(columns=('occupation_0','occupation_1', 'occupation_2'))
-
-occupation['occupation_0'] = data['Occupation']
+occupation = pd.DataFrame({'occupation_0' : np.sort(pd.unique(data['occupation']))})
 
 occupation['occupation_1'] = occupation['occupation_0']
 occupation['occupation_1'].where(occupation['occupation_1'] != 'Adm-clerical', 'Admin', inplace=True)
@@ -276,9 +274,8 @@ occupation['occupation_2'].where(occupation['occupation_2'] != 'Blue-Collar', 'B
 # In[11]:
 
 
-race = pd.DataFrame(columns=('race_0','race_1'))
+race = pd.DataFrame({'race_0' : np.sort(pd.unique(data['race']))})
 
-race['race_0'] = data['Race']
 race['race_1'] = race['race_0']
 race['race_1'].where(race['race_1'] != race['race_1'], '*', inplace=True)
 
@@ -290,9 +287,8 @@ race['race_1'].where(race['race_1'] != race['race_1'], '*', inplace=True)
 # In[12]:
 
 
-gender = pd.DataFrame(columns=('gender_0', 'gender_1'))
+gender = pd.DataFrame({'gender_0' : np.sort(pd.unique(data['gender']))})
 
-gender['gender_0'] = data['Gender']
 gender['gender_1'] = gender['gender_0']
 gender['gender_1'].where(gender['gender_1'] != gender['gender_1'], '*', inplace=True)
 
@@ -344,9 +340,7 @@ gender['gender_1'].where(gender['gender_1'] != gender['gender_1'], '*', inplace=
 # In[13]:
 
 
-native_country = pd.DataFrame(columns=('native_country_0', 'native_country_1', 'native_country_2'))
-
-native_country['native_country_0'] = data['Native_country']
+native_country = pd.DataFrame({'native_country_0' : np.sort(pd.unique(data['native_country']))})
 
 native_country['native_country_1'] = native_country['native_country_0']
 
@@ -405,16 +399,15 @@ native_country['native_country_2'].where(native_country['native_country_2'] != '
 # In[14]:
 
 
-salary = pd.DataFrame(columns=('salary_0','salary_1'))
+salary = pd.DataFrame({'salary_0' : np.sort(pd.unique(data['salary']))})
 
-salary['salary_0'] = data['Salary']
 salary['salary_1'] = salary['salary_0']
 salary['salary_1'].where(salary['salary_1'] != salary['salary_1'], '*', inplace=True)
 
 
 # ### Domains to array
 
-# In[49]:
+# In[15]:
 
 
 dimensions = {}
@@ -427,11 +420,11 @@ dimensions['race']=race
 dimensions['gender']=gender
 dimensions['native_country']=native_country
 dimensions['salary']=salary
-data_concat = data
+#data_concat = data
+
+data_concat = pd.DataFrame()
 for dimension in dimensions:
     data_concat = pd.concat([data_concat, dimensions[dimension]], axis=1)
-    
-data_concat
 
 
 # ### Graph utilities
@@ -441,7 +434,7 @@ data_concat
 # Each tuple_i is composed as (Attribute_name, Attribute_generalization).
 # Ex. (('Age', 0), ('Sex', 0)) is a generalization with respect to columns age_0, sex_0
 
-# In[110]:
+# In[16]:
 
 
 def generate_graph_0(Q, dimensions):
@@ -464,43 +457,123 @@ def generate_graph_0(Q, dimensions):
     return G
 
 
-# In[99]:
+# In[17]:
 
 
 def printGraph(G):
+    #print("G nodes:")
+    for node in G.nodes():
+        print(node)
+
+def plotGraph(G):
     labels = {node:str(node) for node in G.nodes()}
-    print(labels)
+    plt.figure(figsize=(15,8))
     nx.draw(G, with_labels=True, labels=labels)
-    plt.show()
-            
+    plt.plot()            
 
 
 # # Incognito algorithm
 
-# In[101]:
+# In[18]:
 
 
-def frequencySet_standard(T, Q):
-    fsSet = T.groupby(Q).count().reset_index()
+def difference(A, B):
+    result = sorted([item for item in A if item not in B])
+    return tuple(result)
+
+def sortAlphaTup(tup):
+    x = ""
+    for i in range(0, len(tup)):
+        x += str(tup[i][0])
+    return x
+
+
+# In[19]:
+
+
+def frequencySet_standard(T, Q, generalizations):
+    # Add each name of attribute in T the level _0 since it is level 0 generalization:
+    #  this way it can easily use the groupby   
+    tmpT = T.copy()
+    tmpT.columns = [str(col) + '_0' for col in tmpT.columns]
+    
+    #print("Asked fset of T", tmpT.columns, "on Q", Q)
+    
+    for attribute in Q:
+        #Extract generalization height from string
+        attribute_height = int(attribute[len(attribute)-1])
+        #print("attr height", attribute_height)
+        
+        # If it is not level 0 generalization, join with the corresponding dimension table
+        # It will never happen that in Q there will be two level of the same domain, i dont need to control it
+        if not attribute_height == 0:
+            attribute_name = attribute[:len(attribute)-2]
+            #print("attr name", attribute_name)
+            # find corresponding height of this attribute in T
+            for t_col in tmpT.columns:
+                if t_col[:len(t_col)-2] == attribute_name:
+                    correspondingHeightInT = int(t_col[len(t_col)-1])
+
+            tmpT = tmpT.set_index(attribute_name+'_'+str(correspondingHeightInT))            .join(generalizations[attribute_name][[attribute_name+'_'+str(attribute_height),
+                                                          attribute_name+'_'+str(correspondingHeightInT)]].drop_duplicates()\
+                          .set_index(attribute_name+'_'+str(correspondingHeightInT)))
+            
+    if (len(tmpT.columns) == len(Q)):
+        tmpT['RandomColumn'] = tmpT.iloc[:,:1]
+        
+    fsSet = tmpT.groupby(Q).count().reset_index()
     fsSet = fsSet.iloc[:, :(len(Q)+1)]
     fsSet.rename({fsSet.columns[(len(Q))] : 'Count'}, axis='columns', inplace=True)
-
+    
     return fsSet
 
 
-# In[121]:
+# In[20]:
 
 
-def frequencySet_fromParent(T, Q):
+def frequencySet_fromParent(T, Q, generalizations):
+    #print("Asked fset of T", T.columns, "on Q", Q)
+    
+    tmpT = T.copy()
+    
+    for attribute in Q:
+        #Extract generalization height from string
+        attribute_height = int(attribute[len(attribute)-1])
+        # If it is not level 0 generalization, join with the corresponding dimension table
+        # It will never happen that in Q there will be two level of the same domain, i dont need to control it
+        if not attribute_height == 0:
+            attribute_name = attribute[:len(attribute)-2]
+            # find corresponding height of this attribute in T
+            for t_col in tmpT.columns:
+                if t_col[:len(t_col)-2] == attribute_name:
+                    correspondingHeightInT = int(t_col[len(t_col)-1])
+            
+            
+            if not correspondingHeightInT == attribute_height:
+            
+                tmpT = pd.merge(tmpT, generalizations[attribute_name][[attribute_name+'_'+str(attribute_height),
+                                                          attribute_name+'_'+str(correspondingHeightInT)]].drop_duplicates(),
+                               on=attribute_name+'_'+str(correspondingHeightInT))\
+                .drop(labels=attribute_name+'_'+str(correspondingHeightInT), axis=1)
+                
+    fsSet = tmpT.groupby(Q)['Count'].sum().reset_index()
+    fsSet = fsSet.iloc[:, :(len(Q)+1)]
+    return fsSet
+
+
+# In[21]:
+
+
+def frequencySet_fromParent_cube(T, Q):
+    # T is already a frequencySet, Q is a list of attributes
+    # CONSTRAINT: Q must have #columns = (#columns of T - 1) and all the columns in Q must be in T, T must have Count column
+    tmpT = T.copy() 
     fsSet = T.groupby(Q)['Count'].sum().reset_index()
     fsSet = fsSet.iloc[:, :(len(Q)+1)]
-    #Rename last column to "Count"
-    fsSet.rename({fsSet.columns[(len(Q))] : 'Count'}, axis='columns', inplace=True)
-
     return fsSet
 
 
-# In[77]:
+# In[22]:
 
 
 def computeK(frequencySet):
@@ -510,7 +583,7 @@ def computeK(frequencySet):
 # #### Generate attributes list.  For each attribute, include all its generalizations. 
 # Ex. if current node is age_1, we shoud group by age_1, age_2 and age_3 because the latter ones will be needed in next iterations in parentFrequencySet. Of course group by(age_1) has the same number of rows of group by (age_1, age_2, age_3)
 
-# In[128]:
+# In[23]:
 
 
 def getAllAttributesGeneralizations(node, generalizations):
@@ -525,17 +598,207 @@ def getAllAttributesGeneralizations(node, generalizations):
     return attributesOfNode
 
 
-# In[129]:
+# In[24]:
+
+
+def getNodeAttributes(node):
+    attributesOfNode = list()
+    for attribute in node:
+        attributesOfNode.append("{}_{}".format(attribute[ATTRIBUTE_NAME], attribute[ATTRIBUTE_HEIGHT]))
+    return attributesOfNode
+
+
+# In[25]:
 
 
 def getNodeHeight(node):
         height = 0
         for nodeAttr in node:
+            #print(nodeAttr, "is attribute of ", node)
             height = height + nodeAttr[ATTRIBUTE_HEIGHT]
         return height
 
 
-# In[130]:
+# In[26]:
+
+
+def fromListToNode(L):
+    attributeList = list()
+    for element in L:
+        attribute_height = int(element[len(element)-1])
+        attribute_name = element[:len(element)-2]
+        attributeList.append((attribute_name, attribute_height))
+    return tuple(attributeList)
+
+
+# In[27]:
+
+
+def generateGraph(C_i):
+    G = nx.DiGraph()
+    new_edges = pd.DataFrame()
+    df = pd.DataFrame(list(C_i.nodes()))
+    num_columns = len(df.columns)
+    
+    last_x = str(num_columns-1)+'_x'
+    last_y = str(num_columns-1)+'_y'
+    if (num_columns > 1):
+        
+        df_key = df.copy()
+        df_key = df_key.drop(columns=[num_columns-1])
+        df_key = df_key.apply(tuple, axis=1)
+        
+        df_parent = df.copy()
+        df_parent = df_parent.apply(tuple, axis=1)
+                
+        df2 = df.copy()
+        
+        """df['key'] = df[0]
+        df2 = df.copy()
+        
+        df = df.rename(columns={0: '0_x'})
+        df2 = df2.rename(columns={0: '0_y'})
+        
+        df = df.rename(columns={num_columns-1: str(num_columns-1)+'_x'})
+        df2 = df2.rename(columns={num_columns-1: str(num_columns-1)+'_y'})
+        for i in range(1, num_columns-1):
+            df = df.rename(columns={i: str(i)+'_x'})
+            df2 = df2.rename(columns={i: str(i)+'_y'})
+            df['key'] = list(zip(df['key'], df[str(i)+'_x']))
+            df2['key'] = list(zip(df2['key'], df2[str(i)+'_y']))
+            #print(df)
+            """
+        df['key'] = df_key
+        df2['key'] = df_key
+        df['parent_x'] = df_parent #list(zip(df['key'], df[last_x]))
+        df2['parent_y'] = df_parent #list(zip(df2['key'], df2[last_y]))
+        nodes = df.merge(df2, on='key', how='inner')
+        nodes = nodes[['key', str(num_columns-1)+'_x', str(num_columns-1)+'_y', 'parent_x', 'parent_y']]
+        nodes2 = pd.DataFrame()
+        for index, row in nodes.iterrows():
+            if (row[last_x][0] < row[last_y][0]):
+                nodes2 = nodes2.append(row)
+                #l = [row['key'], row[last_x], row[last_y]]
+                l = row['parent_x'] + tuple([row[last_y]])
+                G.add_node(l)
+        nodes2 = nodes2.reset_index(drop=True) 
+    else:
+        df['key'] = 0
+        df2 = df.copy()
+        nodes = df.merge(df2, on='key', how='outer')
+        nodes2 = pd.DataFrame()
+        for index, row in nodes.iterrows():
+            if (row['0_x'][0] < row['0_y'][0]):
+                nodes2 = nodes2.append(row)
+                l = [row['0_x'], row['0_y']]
+                G.add_node(tuple(l))
+        
+        nodes2 = nodes2.reset_index(drop=True)
+    
+    edges = pd.DataFrame()
+    for a, b in C_i.edges():
+        if (num_columns) > 1:
+            edges = edges.append({'start': a, 'end': b}, ignore_index=True)
+        else:
+            edges = edges.append({'start': a[0], 'end': b[0]}, ignore_index=True)
+    if len(edges) == 0:
+        return G
+    for i, node in nodes2.iterrows():
+        if (i >= 0):
+            if node['key'] != 0:
+                cond1_1 = edges[edges['start'] == node['parent_x']].reset_index(drop=True)
+                cond1_2 = edges[edges['start'] == node['parent_y']].reset_index(drop=True)
+            else:
+                cond1_1 = edges[edges['start'] == node[last_x]].reset_index(drop=True)
+                cond1_2 = edges[edges['start'] == node[last_y]].reset_index(drop=True)
+            if node['key'] == 0:
+                if len(cond1_1) > 0:
+                    cond2 = nodes2[nodes2[last_x] == cond1_1['end'][0]]
+                    cond2 = cond2[cond2[last_y] == node[last_y]].reset_index(drop=True)
+                    if len(cond2) > 0 and node[last_y] == cond2[last_y][0] and node[last_x] != cond2[last_x][0]:
+                        n1 = [node[last_x], node[last_y]]
+                        n2 = [cond2[last_x][0], cond2[last_y][0]]
+                        G.add_edge(tuple(n1), tuple(n2))
+
+                if len(cond1_2) > 0:
+                    cond3 = nodes2[nodes2[last_y] == cond1_2['end'][0]]
+                    cond3 = cond3[cond3[last_x] == node[last_x]].reset_index(drop=True)
+                    if len(cond3) > 0 and node[last_x] == cond3[last_x][0] and node[last_y] != cond3[last_y][0]:
+                        n1 = [node[last_x], node[last_y]]
+                        n2 = [cond3[last_x][0], cond3[last_y][0]]
+                        G.add_edge(tuple(n1), tuple(n2))
+            else:
+                cond1 = pd.DataFrame()
+                cond1_1aux = cond1_1.copy()
+                cond1_1aux = cond1_1aux.rename(columns={'end': 'parent_x'})
+                condaux = nodes2.merge(cond1_1aux, on='parent_x', how='inner')
+                cond2aux = condaux[condaux['parent_y'] == node['parent_y']].reset_index(drop=True)
+                for j in range(0, len(cond2aux)):
+                    n1 = node['parent_x'] + tuple([node[last_y]])
+                    n2 = cond2aux['parent_x'][j] + tuple([cond2aux[last_y][j]])
+                    #G.add_edge(tuple(n1), tuple(n2))
+                    new_edges = new_edges.append({'start': n1, 'end': n2}, ignore_index=True)
+                """
+                print(condaux)
+                #if len(cond1_1) > 0:
+                for j in range(0, len(cond1_1)):
+                    cond2 = nodes2[nodes2['parent_x'] == cond1_1['end']][j]
+                    cond2 = cond2[cond2['parent_y'] == node['parent_y']].reset_index(drop=True)
+                    if len(cond2) > 0 and node['parent_y'] == cond2['parent_y'][0] and node['parent_x'] != cond2['parent_x'][0]:
+                        #cond1 = cond1.append(cond2[0])
+                        n1 = node['parent_x'] + tuple([node[last_y]])
+                        n2 = cond2['parent_x'][0] + tuple([cond2[last_y][0]])
+                        G.add_edge(tuple(n1), tuple(n2))
+                """
+                
+                cond1_2aux = cond1_2.copy()
+                cond1_2aux = cond1_2aux.rename(columns={'end': 'parent_y'})
+                condaux2 = nodes2.merge(cond1_2aux, on='parent_y', how='inner')
+                cond3aux = condaux2[condaux2['parent_x'] == node['parent_x']].reset_index(drop=True)
+                for j in range(0, len(cond3aux)):
+                    n1 = node['parent_x'] + tuple([node[last_y]])
+                    n2 = cond3aux['parent_x'][j] + tuple([cond3aux[last_y][j]])
+                    #G.add_edge(tuple(n1), tuple(n2))
+                    new_edges = new_edges.append({'start': n1, 'end': n2}, ignore_index=True)
+                
+                condaux2 = condaux2[['parent_x', 'parent_y']]
+                cond1 = condaux.merge(condaux2, on=['parent_x', 'parent_y'], how='inner')
+                for j in range(0, len(cond1)):
+                    n1 = node['parent_x'] + tuple([node[last_y]])
+                    n2 = cond1['parent_x'][j] + tuple([cond1[last_y][j]])
+                    new_edges = new_edges.append({'start': n1, 'end': n2}, ignore_index=True)
+                """
+                #if len(cond1_2) > 0:
+                for j in range(0, len(cond1_2)):
+                    #print(cond1_2)
+                    cond3 = nodes2[nodes2['parent_y'] == cond1_2['end'][j]]
+                    #print(cond3)
+                    cond3 = cond3[cond3['parent_x'] == node['parent_x']].reset_index(drop=True)
+                    #print(cond3)
+                    if len(cond3) > 0 and node['parent_x'] == cond3['parent_x'][0] and node['parent_y'] != cond3['parent_y'][0]:
+                        print(len(cond3))
+                        n1 = node['parent_x'] + tuple([node[last_y]])
+                        n2 = cond3['parent_x'][0] + tuple([cond3[last_y][0]])
+                        G.add_edge(tuple(n1), tuple(n2))
+                """
+    if len(new_edges) >0:
+        remove_edges = new_edges.copy()
+        remove_edges = remove_edges.rename(columns={'end': 'end2'})
+        remove_edges = remove_edges.rename(columns={'start': 'end'})
+        remove_edges = remove_edges.merge(new_edges, on='end', how='inner')
+        remove_edges = remove_edges.drop(columns=['end'])
+        remove_edges = remove_edges.rename(columns={'end2': 'end'})
+        common = new_edges.merge(remove_edges,on=['start','end'])
+        new_edges = pd.concat([new_edges, common]).drop_duplicates(keep=False)
+        for index, edge in new_edges.iterrows():
+            G.add_edge(tuple(edge['start']), tuple(edge['end']))
+
+    #printGraph(G)
+
+    return G
+
+
+# In[28]:
 
 
 def incognito_standard (k, T, Q, generalizations):
@@ -546,30 +809,163 @@ def incognito_standard (k, T, Q, generalizations):
     C_i = generate_graph_0(Q, generalizations) # Graph (C_i, E_i) at iteration i
     S_i = None
     sink = list((node for node, out_degree in C_i.out_degree() if out_degree == 0))[0]
-    for i in range(0, len(Q)-3):
+    frequencySetDictionary = {}
+    
+    for i in range(0, len(Q)):
+        # It is not a problem if we copy the whole graph instead of copying
+        #  only the nodes since every time we use S_i we delete nodes, and
+        #  therefore we also delete edges attached to these nodes
         S_i = C_i.copy()
         marked = set()
-        
+
         # Insert all roots node into queue, keeping queue sorted by height
         for node in C_i.nodes():
             if C_i.in_degree(node) == 0:
-                height =getNodeHeight(node)
+                height = getNodeHeight(node)
                 # First parameter is height, second is data
                 queue.put((height, node))
         
         while not queue.empty():
             height, node = queue.get()
-            if node not in marked:
-                # Ex. attributesOfNode = [age_0, age_1, age_2, sex_1, sex_2]
-                attributesOfNode = getAllAttributesGeneralizations(node, generalizations) 
+            
+            if node not in marked and node in S_i.nodes():
+                attributesOfNode = getNodeAttributes(node)
                 # if node was initally a root
                 if C_i.in_degree(node) == 0:
-                    frequencySet = frequencySet_standard(T, attributesOfNode)
+                    frequencySet = frequencySet_standard(T, attributesOfNode, generalizations)
                 else:
-                    frequencySetParent = S_i.node[node]['parentFrequencySet']
-                    frequencySet = frequencySet_fromParent(frequencySetParent, attributesOfNode)
-                
+                    frequencySetParent = frequencySetDictionary[node]
+                    frequencySet = frequencySet_fromParent(frequencySetParent, attributesOfNode, generalizations)
+                                        
                 actual_k = computeK(frequencySet)
+
+                # If T is k-anonymous with respect to attributes of node
+                if (actual_k >= k):
+                    # mark all direct generalizations of node
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            #print("marked node", pathNode)
+                            marked.add(pathNode)
+                else:
+                    # Set childs frequency set to this one                    
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            if not pathNode == node: 
+                                frequencySetDictionary[pathNode] = frequencySet
+                                height = getNodeHeight (pathNode)
+                                queue.put((height, pathNode))
+                            
+                    S_i.remove_node(node)
+                    
+        C_i = generateGraph(S_i)
+    return S_i
+
+
+# In[29]:
+
+
+def incognito_super_root (k, T, Q, generalizations):
+    queue = pythonQueue.PriorityQueue()
+    
+    # Must be initialized outside the for since will be both shared between iterations...
+    C_i = generate_graph_0(Q, generalizations) # Graph (C_i, E_i) at iteration i
+    S_i = None
+    sink = list((node for node, out_degree in C_i.out_degree() if out_degree == 0))[0]
+    frequencySetDictionary = {}
+    
+    for z in range(0, len(Q)):
+        # It is not a problem if we copy the whole graph instead of copying
+        #  only the nodes since every time we use S_i we delete nodes, and
+        #  therefore we also delete edges attached to these nodes
+        S_i = C_i.copy()
+        marked = set()
+
+        #set containing roots
+        rootSet = set()
+        
+        # Insert all roots node into queue, keeping queue sorted by height
+        for node in C_i.nodes():
+            if C_i.in_degree(node) == 0:
+                # Order the content of nodes and add it to rootSet
+                rootSet.add(tuple(sorted(node)))
+                height = getNodeHeight(node)
+                # First parameter is height, second is data
+                queue.put((height, node))
+        
+        # Order also list of nodes in rootSet
+        rootSet = sorted(rootSet, key=lambda tup: sortAlphaTup(tup))
+        
+        # Given a set of roots, try to find if there are common ancestors of some of them and compute freqSet at level 0
+        familyFound = False
+        familyCount = 0 
+        
+        if (len(rootSet) == 1):
+            frequencySetDictionary[rootSet[0]] = frequencySet_standard(T, getNodeAttributes(rootSet[0]), generalizations)
+        else:
+            for i in range(1, len(rootSet)):
+                sameFamilyAsBefore = True
+
+                # Se i nodi hanno tuple di lunghezza diversa non provengono dalla stessa famiglia (o comunque non devo gestirlo)
+                if not (len(rootSet[i]) == len(rootSet[i-1])):
+                    sameFamilyAsBefore = False    
+                else:
+                    # Se hanno tuple di lunghezza uguale, controlla se hanno gli stessi attributi
+                    for j in range(0, len(rootSet[i])):
+                        if not (rootSet[i-1][j][0] == rootSet[i][j][0]):
+                            sameFamilyAsBefore = False
+
+                # se l'attuale nodo ha gli stessi attributi di quello precedente, aggiungi 1 al numero di persone in famiglia
+                if sameFamilyAsBefore:
+                    familyFound = True
+                    familyCount +=1
+                    
+                    # Se l'attuale nodo e' anche l'ultimo, allora e' l'ultimo della famiglia, calcolane la freqSet
+                    if (i == (len(rootSet)-1)):
+                        familyAttributes = list()
+                        for l in range(len(rootSet[i-1])):
+                            familyAttributes.append(str(rootSet[i-1][l][ATTRIBUTE_NAME]) + "_0")
+
+                        familyFreqSet = frequencySet_standard(T, familyAttributes, generalizations)
+
+                        for l in range((i - familyCount), (i+1)):
+                            frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
+                
+                # Se l'attuale nodo  non ha gli stessi attributi di quello precedente:
+                else:
+                    # se avevamo trovato una famiglia, allora calcolane la freqSet (fino al nodo precedente)
+                    if familyFound:
+                        familyCount += 1
+                        familyAttributes = list()
+                        for l in range(len(rootSet[i-1])):
+                            familyAttributes.append(str(rootSet[i-1][l][ATTRIBUTE_NAME]) + "_0")
+
+                        familyFreqSet = frequencySet_standard(T, familyAttributes, generalizations)
+
+                        for l in range((i - familyCount), (i)):
+                            frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
+                            
+                    else:
+                        frequencySetDictionary[rootSet[i-1]] = frequencySet_standard(T, getNodeAttributes(rootSet[i-1]), generalizations)
+
+                        if (i == (len(rootSet)-1)):
+                            frequencySetDictionary[rootSet[i]] = frequencySet_standard(T, getNodeAttributes(rootSet[i]), generalizations)
+                                                        
+                    familyFound = False
+                    familyCount = 0
+                
+        while not queue.empty():
+            height, node = queue.get()
+            if node not in marked and node in S_i.nodes():
+                attributesOfNode = getNodeAttributes(node)
+                # if node was initally a root
+                if C_i.in_degree(node) == 0:
+                    frequencySet = frequencySetDictionary[node]
+                else:
+                    frequencySetParent = frequencySetDictionary[node]
+                    frequencySet = frequencySet_fromParent(frequencySetParent, attributesOfNode, generalizations)
+                    
+                actual_k = computeK(frequencySet)
+                
                 # If T is k-anonymous with respect to attributes of node
                 if (actual_k >= k):
                     # mark all direct generalizations of node
@@ -577,123 +973,298 @@ def incognito_standard (k, T, Q, generalizations):
                         for pathNode in generalizationPath:
                             marked.add(pathNode)
                 else:
-                    # Set childs frequency set to this one
-                    for child in S_i.out_edges(node):
-                        S_i.node[child[1]]['parentFrequencySet'] = frequencySet
-                        height =getNodeHeight(child[1])
-                        queue.put((height, child[1]))
-                        
-                    #print("Removed node: {}".format(node))
+                    # Set childs frequency set to this one                    
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            if not pathNode == node: 
+                                frequencySetDictionary[pathNode] = frequencySet
+                                height = getNodeHeight (pathNode)
+                                queue.put((height, pathNode))
+                            
                     S_i.remove_node(node)
                     
-        #COMPUTE C_i+1
-    return S_i
+                    
+        C_i = generateGraph(S_i)
+    return S_i    
+
+
+# In[30]:
+
+
+def cube_incognito (k, T, Q, generalizations):
+    queue = pythonQueue.PriorityQueue()
+    
+    # Must be initialized outside the for since will be both shared between iterations...
+    C_i = generate_graph_0(Q, generalizations) # Graph (C_i, E_i) at iteration i
+    S_i = None
+    sink = list((node for node, out_degree in C_i.out_degree() if out_degree == 0))[0]
+    frequencySetDictionary = {}
+    
+    cubeQ_top = sorted([str(attribute) + '_0' for attribute in Q])
+    frequencySetDictionary[fromListToNode(cubeQ_top)] = frequencySet_standard(T, getNodeAttributes(fromListToNode(cubeQ_top)), generalizations)
+        
+    for i in range(len(Q)-1, 0, -1):
+        cubeQ_list = list(itertools.combinations(cubeQ_top, i))
+        for cubeQ in cubeQ_list:
+            tempDiff = list()
+            tempDiff.append(difference(cubeQ_top, cubeQ)[0])
+            cubeQ_tmp = sorted(cubeQ + tuple(tempDiff))
+            frequencySetDictionary[fromListToNode(cubeQ)] = frequencySet_fromParent_cube(frequencySetDictionary[fromListToNode(cubeQ_tmp)], cubeQ)
+    
+    for z in range(0, len(Q)):
+        # It is not a problem if we copy the whole graph instead of copying
+        #  only the nodes since every time we use S_i we delete nodes, and
+        #  therefore we also delete edges attached to these nodes
+        S_i = C_i.copy()
+        marked = set()
+
+        #set containing roots
+        rootSet = set()
+        
+        # Insert all roots node into queue, keeping queue sorted by height
+        for node in C_i.nodes():
+            if C_i.in_degree(node) == 0:
+                # Order the content of nodes and add it to rootSet
+                rootSet.add(tuple(sorted(node)))
+                height = getNodeHeight(node)
+                # First parameter is height, second is data
+                queue.put((height, node))
+        
+        # Order also list of nodes in rootSet
+        rootSet = sorted(rootSet, key=lambda tup: sortAlphaTup(tup))
+        
+        # Given a set of roots, try to find if there are common ancestors of some of them and compute freqSet at level 0
+        familyFound = False
+        familyCount = 0 
+        
+        if (len(rootSet) == 1):
+            frequencySetDictionary[rootSet[0]] = frequencySet_standard(T, getNodeAttributes(rootSet[0]), generalizations)
+        else:
+            for i in range(1, len(rootSet)):
+                sameFamilyAsBefore = True
+
+                # Se i nodi hanno tuple di lunghezza diversa non provengono dalla stessa famiglia (o comunque non devo gestirlo)
+                if not (len(rootSet[i]) == len(rootSet[i-1])):
+                    sameFamilyAsBefore = False    
+                else:
+                    # Se hanno tuple di lunghezza uguale, controlla se hanno gli stessi attributi
+                    for j in range(0, len(rootSet[i])):
+                        if not (rootSet[i-1][j][0] == rootSet[i][j][0]):
+                            sameFamilyAsBefore = False
+
+                # se l'attuale nodo ha gli stessi attributi di quello precedente, aggiungi 1 al numero di persone in famiglia
+                if sameFamilyAsBefore:
+                    familyFound = True
+                    familyCount +=1
+                    
+                    # Se l'attuale nodo e' anche l'ultimo, allora e' l'ultimo della famiglia, calcolane la freqSet
+                    if (i == (len(rootSet)-1)):
+                        familyAttributes = list()
+                        for l in range(len(rootSet[i-1])):
+                            familyAttributes.append(str(rootSet[i-1][l][ATTRIBUTE_NAME]) + "_0")
+
+                        #familyFreqSet = frequencySet_standard(T, familyAttributes, generalizations)
+                        familyFreqSet = frequencySetDictionary[fromListToNode(familyAttributes)]
+
+                        for l in range((i - familyCount), (i+1)):
+                            frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
+                
+                # Se l'attuale nodo  non ha gli stessi attributi di quello precedente:
+                else:
+                    # se avevamo trovato una famiglia, allora calcolane la freqSet (fino al nodo precedente)
+                    if familyFound:
+                        familyCount += 1
+                        familyAttributes = list()
+                        for l in range(len(rootSet[i-1])):
+                            familyAttributes.append(str(rootSet[i-1][l][ATTRIBUTE_NAME]) + "_0")
+
+                        #familyFreqSet = frequencySet_standard(T, familyAttributes, generalizations)
+                        familyFreqSet = frequencySetDictionary[fromListToNode(familyAttributes)]
+                        for l in range((i - familyCount), (i)):
+                            frequencySetDictionary[rootSet[l]] = frequencySet_fromParent(familyFreqSet, getNodeAttributes(rootSet[l]), dimensions)
+                            
+                    else:
+                        frequencySetDictionary[rootSet[i-1]] = frequencySet_standard(T, getNodeAttributes(rootSet[i-1]), generalizations)
+
+                        if (i == (len(rootSet)-1)):
+                            frequencySetDictionary[rootSet[i]] = frequencySet_standard(T, getNodeAttributes(rootSet[i]), generalizations)
+                                                        
+                    familyFound = False
+                    familyCount = 0
+                
+        while not queue.empty():
+            height, node = queue.get()
+            if node not in marked and node in S_i.nodes():
+                attributesOfNode = getNodeAttributes(node)
+                # if node was initally a root
+                if C_i.in_degree(node) == 0:
+                    frequencySet = frequencySetDictionary[node]
+                else:
+                    frequencySetParent = frequencySetDictionary[node]
+                    frequencySet = frequencySet_fromParent(frequencySetParent, attributesOfNode, generalizations)
+                    
+                actual_k = computeK(frequencySet)
+                
+                # If T is k-anonymous with respect to attributes of node
+                if (actual_k >= k):
+                    # mark all direct generalizations of node
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            marked.add(pathNode)
+                else:
+                    # Set childs frequency set to this one                    
+                    for generalizationPath in nx.all_simple_paths(S_i, source=node, target=sink):
+                        for pathNode in generalizationPath:
+                            if not pathNode == node: 
+                                frequencySetDictionary[pathNode] = frequencySet
+                                height = getNodeHeight (pathNode)
+                                queue.put((height, pathNode))
+                            
+                    S_i.remove_node(node)
+                    
+                    
+        C_i = generateGraph(S_i)
+    return S_i      
 
 
 # # Tests
 # 
 # Some code to do tests and similar
 
-# In[22]:
+# In[74]:
 
 
-# Example of dataframe, supposed to be 1-anonymous
+QI = ['age', 'workclass', 'education', 'marital_status', 'race', 'gender']
 
-exampleDF = pd.DataFrame(columns=('Name','Age', 'Gender', 'State_domicile', 'Religion', 'Disease'))
-exampleDF.loc[0] = ['Ramsha' ,30 ,'Female' ,'Tamil Nadu' ,'Hindu' ,'Cancer']
-exampleDF.loc[1] = ['Yadu' ,24 ,'Female' ,'Kerala' ,'Hindu' ,'Viral infection']
-exampleDF.loc[2] = ['Salima' ,28 ,'Female' ,'Tamil Nadu' ,'Muslim' ,'TB']
-exampleDF.loc[3] = ['Sunny' ,27 ,'Male' ,'Karnataka' ,'Parsi' ,'No illness']
-exampleDF.loc[4] = ['Joan' ,24 ,'Female' ,'Kerala' ,'Christian' ,'Heart-related']
-exampleDF.loc[5] = ['Bahuksana' ,23 ,'Male' ,'Karnataka' ,'Buddhist' ,'TB']
-exampleDF.loc[6] = ['Rambha' ,19 ,'Male' ,'Kerala' ,'Hindu' ,'Cancer']
-exampleDF.loc[7] = ['Kishor' ,29 ,'Male' ,'Karnataka' ,'Hindu' ,'Heart-related']
-exampleDF.loc[8] = ['Johnson' ,17 ,'Male' ,'Kerala' ,'Christian' ,'Heart-related']
-exampleDF.loc[9] = ['John' ,19 ,'Male' ,'Kerala' ,'Christian' ,'Viral infection']
+print("standard")
+result_standard = incognito_standard(2, data, QI, dimensions)
+#printGraph(result_standard)
 
+print("\nsuperroot")
+result_super_root = incognito_super_root(2, data, QI, dimensions)
+#printGraph(result_super_root)
 
-# In[23]:
+print("\ncube")
+result_cube = cube_incognito(2, data, QI, dimensions)
+#printGraph(result_cube)
 
 
-# the same dataframe but anonymized, it is supposed to be 2-anonymous with respect to Age, Gender, State_domicile
-
-exampleDF_anonymized = pd.DataFrame(columns=('Name','Age', 'Gender', 'State_domicile', 'Religion', 'Disease'))
-exampleDF_anonymized.loc[0] = ['*', '20 < Age < 30', 'Female', 'Tamil Nadu','*', 'Cancer']
-exampleDF_anonymized.loc[1] = ['*', '20 < Age < 30', 'Female', 'Kerala', '*', 'Viral infection']
-exampleDF_anonymized.loc[2] = ['*', '20 < Age < 30', 'Female','Tamil Nadu', '*', 'TB']
-exampleDF_anonymized.loc[3] = ['*', '20 < Age < 30', 'Male', 'Karnataka', '*', 'No illness']
-exampleDF_anonymized.loc[4] = ['*', '20 < Age < 30', 'Female', 'Kerala', '*', 'Heart-related']
-exampleDF_anonymized.loc[5] = ['*', '20 < Age < 30', 'Male', 'Karnataka', '*', 'TB']
-exampleDF_anonymized.loc[6] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Cancer']
-exampleDF_anonymized.loc[7] = ['*', '20 < Age < 30', 'Male', 'Karnataka', '*', 'Heart-related']
-exampleDF_anonymized.loc[8] = ['*', 'Age < 20', 'Male', 'Kerala',  '*', 'Heart-related']
-exampleDF_anonymized.loc[9] = ['*', 'Age < 20', 'Male', 'Kerala', '*', 'Viral infection']
+# In[78]:
 
 
-# In[24]:
+paper_data_x = [3,4,5,6,7,8,9]
+paper_data_superRoot_K_2 = [0,0,0,1,2,4,12]
+paper_data_cube_K_2 = [0,0,0,1,2,6,16]
+paper_data_standard_K_2 = [0,0,0,1.5,3.5,8, 19]
+
+plt.figure(figsize=(15,8))
+plt.grid()
+plt.plot(paper_data_x, paper_data_standard_K_2, '^-', label='Standard')
+plt.plot(paper_data_x, paper_data_cube_K_2, 'o-', label='Cube Incognito')
+plt.plot(paper_data_x, paper_data_superRoot_K_2, '+-', label='Super-roots incognito')
+plt.title("Adults database (k=2) - Paper results")
+plt.ylabel("Elapsed Time (minutes)")
+plt.xlabel("Quasi-Identifier Size")
+plt.legend()
 
 
-frequencySet_standard(exampleDF, ['Age', 'Gender', 'State_domicile'])
+# In[77]:
 
 
-# In[25]:
+paper_data_x = [3,4,5,6,7,8,9]
+
+paper_data_superRoot_K_10 = [0,0,0,1,2,4.5,10]
+paper_data_cube_K_10 = [0,0,0,1,2,5,12]
+paper_data_standard_K_10 = [0,0,0,1.5,3,7, 17]
+
+plt.figure(figsize=(15,8))
+plt.grid()
+plt.plot(paper_data_x, paper_data_standard_K_10, '^-', label='Standard')
+plt.plot(paper_data_x, paper_data_cube_K_10, 'o-', label='Cube Incognito')
+plt.plot(paper_data_x, paper_data_superRoot_K_10, '+-', label='Super-roots incognito')
+plt.title("Adults database (k=10) - Paper results")
+plt.ylabel("Elapsed Time (minutes)")
+plt.xlabel("Quasi-Identifier Size")
+plt.legend()
 
 
-frequencySet_standard(exampleDF_anonymized, ['Age', 'Gender', 'State_domicile'])
+# In[68]:
 
 
-# In[26]:
+def time_incognito(k, data, Q, dimensions, algorithm):
+    stats = list()
+    for i in range(3, len(Q)+1):
+    #for i in range(3,4):
+        tmpQ = Q[:i]
+        start = time.time()
+        algorithm(k, data, tmpQ, dimensions)
+        end = time.time()
+        stats.append(end-start)
+    return stats    
+
+Q = ['age', 'workclass', 'education', 'marital_status', 'occupation', 'race', 'gender', 'native_country', 'salary']        
+
+our_data_standard_K_10 = time_incognito(10, data, Q, dimensions, incognito_standard)
+print("standard done")
+our_data_superRoot_K_10 = time_incognito(10, data, Q, dimensions, incognito_super_root)
+print("superRoot done")
+our_data_cube_K_10 = time_incognito(10, data, Q, dimensions, cube_incognito)
+print("cube done")
+
+our_data_standard_K_2 = time_incognito(2, data, Q, dimensions, incognito_standard)
+print("standard done")
+our_data_superRoot_K_2 = time_incognito(2, data, Q, dimensions, incognito_super_root)
+print("superRoot done")
+our_data_cube_K_2 = time_incognito(2, data, Q, dimensions, cube_incognito)
+print("cube done")
 
 
-fSet = frequencySet_standard(data[:30], ['Age', 'Workclass', 'Education', 'Marital_status'])
-fSet
+# In[76]:
 
 
-# In[27]:
+plt.figure(figsize=(15,8))
+plt.grid()
+plt.plot(paper_data_x, our_data_standard_K_10, '^-', label='Standard')
+plt.plot(paper_data_x, our_data_cube_K_10, 'o-', label='Cube Incognito')
+plt.plot(paper_data_x, our_data_superRoot_K_10, '+-', label='Super-roots incognito')
+plt.title("Adults database (k=10)")
+plt.ylabel("Elapsed Time (seconds)")
+plt.xlabel("Quasi-Identifier Size")
+plt.legend()
 
 
-tmpAge = pd.DataFrame({'age_0' : np.sort(pd.unique(data['Age']))})
-tmpAge['age_1'] = (tmpAge['age_0']/5).apply(math.floor)*5
-tmpAge['age_2'] = (tmpAge['age_0']/10).apply(math.floor)*10
-tmpAge['age_3'] = (tmpAge['age_0']/20).apply(math.floor)*20
-
-fSet = frequencySet_standard(data[:50], ['Age', 'Workclass', 'Education', 'Marital_status'])
-
-fSet.join(tmpAge.set_index('age_0'), on='Age')
+# In[71]:
 
 
-# In[30]:
+print(our_data_standard_K_2)
+print(our_data_superRoot_K_2)
+print(our_data_cube_K_2)
 
 
-graph = generate_graph_0( ['Age', 'Workclass', 'Education', 'Marital_status'], dimensions)
-printGraph(graph)
+# In[75]:
 
 
-# In[132]:
+plt.figure(figsize=(15,8))
+plt.grid()
+plt.plot(paper_data_x, our_data_standard_K_2, '^-', label='Standard')
+plt.plot(paper_data_x, our_data_cube_K_2, 'o-', label='Cube Incognito')
+plt.plot(paper_data_x, our_data_superRoot_K_2, '+-', label='Super-roots incognito')
+plt.title("Adults database (k=2)")
+plt.ylabel("Elapsed Time (seconds)")
+plt.xlabel("Quasi-Identifier Size")
+plt.legend()
 
 
-G = incognito_standard(50, data_concat, ['age', 'workclass', 'education', 'marital_status'], dimensions  )
-
-printGraph(G)
+# In[70]:
 
 
-# In[ ]:
+print(our_data_standard_K_10)
+print(our_data_superRoot_K_10)
+print(our_data_cube_K_10)
 
 
-#frequencySet_standard(data, ['Age_1'])
-attributesOfNode = getAllAttributesGeneralizations([('Age', 0)], dimensions)   
-print(attributesOfNode)
-frequencySet = frequencySet_standard(T, attributesOfNode)
+# In[79]:
 
 
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
+print(len(data))
 
